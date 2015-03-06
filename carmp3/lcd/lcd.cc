@@ -24,8 +24,8 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "font_big.c"
-#include "font_small.c"
+#include "font/font_big.c"
+#include "font/font_small.c"
 
 #define FONT_SMALL 0
 #define FONT_BIG 1
@@ -39,7 +39,7 @@ class Glcd{
         void putpixel(int x, int y, char c);
         void redraw(int x, int y, int width, int height);
         void fillrect(int x, int y, int width, int height, char c);
-        void putchar(int x, int y, const char c);
+        void putchar(int x, int y, const int c);
         void drawBitmap(int x, int y, int width, int height, const char *bitmap);
 
 	virtual ~Glcd();
@@ -133,7 +133,7 @@ void Glcd::clear(){
    syncAll();
 }
 
-void Glcd::putchar(int x, int y, const char c){
+void Glcd::putchar(int x, int y, const int c){
 	
 	drawBitmap(x,y,fontWidth,fontHeight,font + (c-32)*fontBPC);
 }
@@ -146,7 +146,7 @@ void Glcd::drawBitmap(int x, int y, int width, int height, const char *bitmap){
 	int right = ((x + width - 1) >> 4);
         int lbit = (16 - (x%16)) ;
         int rbit = (x + width - 1)%16;
-	      printf("lbit: %d\n",lbit);
+        //	      printf("lbit: %d\n",lbit);
 	//        printf("left %d, right %d",left,right);
         int smallShift = (width < lbit)? lbit-width:0; 	
         int smallMask = smallShift?(1 << (smallShift))-1:0;
@@ -363,9 +363,9 @@ int main(int argc, char **argv)
 //for(int i = 127; i >= 0 ; i-=5){
 //lcd.fillrect(0,0,128,20,1);
 
-lcd.putchar(0,0,'B');
+lcd.putchar(0,0,237);
 lcd.setFont(0);
-lcd.putchar(20,0,'A');
+lcd.putchar(10,0,382);
 
 //lcd.drawBitmap(atoi(argv[1]),0,10,20,font_10_20);
 //lcd.drawBitmap(10,0,10,20,font_10_20);
