@@ -33,10 +33,13 @@ def main():
     fromchar = 32;
     tochar = 128;
     first = 0
-    name = "small"
-
+    name = "big"
+    font = "10x20.bdf"  
+  
+    print "//%s" % font
     print "const char font_%s[] = { " % name
-    fl = open("8x13.bdf")
+
+    fl = open(font)
     for line in fl.xreadlines():
         if inchar == 0:
             data = line.split(' ')
@@ -68,7 +71,6 @@ def main():
         if inchar == 3:
             if line.strip() == 'ENDCHAR':
                 inchar = 0
-                first = 0
                 continue
             else:
                 if first == 0:

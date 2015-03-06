@@ -24,16 +24,22 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include "font_big.c"
+#include "font_small.c"
 
+#define FONT_SMALL 0
+#define FONT_BIG 1
 
 class Glcd{
    public:	
 	Glcd();
         int init();
+        void setFont(int type);
         void clear();
         void putpixel(int x, int y, char c);
         void redraw(int x, int y, int width, int height);
         void fillrect(int x, int y, int width, int height, char c);
+        void putchar(int x, int y, const char c);
         void drawBitmap(int x, int y, int width, int height, const char *bitmap);
 
 	virtual ~Glcd();
@@ -47,15 +53,39 @@ class Glcd{
         int16_t grabBitmapRow(int x, int y, int count,  int width, const char *bitmap, int rightAlign = 0);
    private:
         uint16_t *fb;
+        const char *font;
+        int fontWidth;
+	int fontHeight;
+	int fontBPC;
 
 
 };
 
-Glcd::Glcd():fb(0){
+Glcd::Glcd():fb(0),font(0){
 
 	fb = new uint16_t[1024];
-        
+	setFont(1);        
 
+}
+
+void Glcd::setFont(int type){
+
+	switch(type){
+
+		case FONT_SMALL:
+			font = font_small;
+			fontWidth = 8;
+			fontHeight = 13;
+			fontBPC = 13;
+			break;
+
+		case FONT_BIG:
+			font = font_big;
+			fontWidth = 10;
+			fontHeight = 20;
+			fontBPC = 40;
+			break;
+	}
 }
 
 int Glcd::init(){
@@ -102,6 +132,12 @@ void Glcd::clear(){
    memset(fb,0,1024*sizeof(uint16_t));
    syncAll();
 }
+
+void Glcd::putchar(int x, int y, const char c){
+	
+	drawBitmap(x,y,fontWidth,fontHeight,font + (c-32)*fontBPC);
+}
+
 
 void Glcd::drawBitmap(int x, int y, int width, int height, const char *bitmap){
 	int ix = 0;
@@ -228,9 +264,9 @@ int16_t Glcd::grabBitmapRow(int x, int y, int count, int width, const char *bitm
 
         if (count > width)
            count = width;
-	int index = y*((width >> 3)+1) + (x >> 3);
+	int index = y*(((width - 1) >> 3) + 1) + (x >> 3);
 	int bindex = (x%8);            
-        //printf("width:%d y: %d index:%d,bindex:%d, count:%d \n ",width,y,index,bindex,count);
+//        printf("width:%d y: %d index:%d,bindex:%d, count:%d \n ",width,y,index,bindex,count);
 	for( int i = 0; i < count; ++i){
                 
                 if ( bitmap[index] & (1 << (bindex)))
@@ -246,7 +282,7 @@ int16_t Glcd::grabBitmapRow(int x, int y, int count, int width, const char *bitm
         if (count < 15 && rightAlign)
 	   result = result >> (16 - count);
         
-        //printf("res:%x\n",result&0xffff);
+  //      printf("res:%x\n",result&0xffff);
 	return result ;
 }
 
@@ -323,36 +359,15 @@ int main(int argc, char **argv)
    lcd.init();
    lcd.clear();    
 
-const char  font_10_20 [] = { 
-//char no 66
-0x00, 0x00
-,0x00, 0x00
-,0x00, 0x00
-,0x3e, 0x00
-,0x66, 0x00
-,0xc6, 0x00
-,0xc6, 0x00
-,0xc6, 0x00
-,0x66, 0x00
-,0x7e, 0x00
-,0xc6, 0x00
-,0x86, 0x01
-,0x86, 0x01
-,0x86, 0x01
-,0xc6, 0x00
-,0x7e, 0x00
-,0x00, 0x00
-,0x00, 0x00
-,0x00, 0x00
-,0x00, 0x00
-
-
-};
 
 //for(int i = 127; i >= 0 ; i-=5){
-lcd.fillrect(0,0,128,20,1);
+//lcd.fillrect(0,0,128,20,1);
 
-lcd.drawBitmap(atoi(argv[1]),0,10,20,font_10_20);
+lcd.putchar(0,0,'B');
+lcd.setFont(0);
+lcd.putchar(20,0,'A');
+
+//lcd.drawBitmap(atoi(argv[1]),0,10,20,font_10_20);
 //lcd.drawBitmap(10,0,10,20,font_10_20);
 //lcd.drawBitmap(20,0,10,20,font_10_20);
 //lcd.drawBitmap(30,0,10,20,font_10_20);
