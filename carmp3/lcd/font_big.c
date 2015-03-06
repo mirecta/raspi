@@ -1,4 +1,5 @@
-const char [] font_big = { 
+//10x20
+const char font_big[] = { 
 //char no 32
 0x00, 0x00
 ,0x00, 0x00

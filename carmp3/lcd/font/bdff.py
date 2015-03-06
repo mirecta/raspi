@@ -33,10 +33,10 @@ def main():
     fromchar = 32;
     tochar = 128;
     first = 0
-    name = "big"
+    name = "small"
 
-    print "const char [] font_%s = { " % name
-    fl = open("10x20.bdf")
+    print "const char font_%s[] = { " % name
+    fl = open("8x13.bdf")
     for line in fl.xreadlines():
         if inchar == 0:
             data = line.split(' ')
@@ -78,7 +78,10 @@ def main():
                     append = ','
                 #endif
                 data = line.strip()
-                print "%s0x%c%c, 0x%c%c" % (append,table[data[1]],table[data[0]],table[data[3]],table[data[2]])
+                if len(data) == 4:
+                    print "%s0x%c%c, 0x%c%c" % (append,table[data[1]],table[data[0]],table[data[3]],table[data[2]])
+                elif len(data) == 2:
+                    print "%s0x%c%c" % (append,table[data[1]],table[data[0]])
 
             #endif
         #endif
