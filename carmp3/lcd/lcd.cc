@@ -24,11 +24,44 @@
 #include <string.h>
 #include <stdlib.h>
 
+#include <string>
+#include <vector>
+
 #include "font/font_big.c"
 #include "font/font_small.c"
 
 #define FONT_SMALL 0
 #define FONT_BIG 1
+
+#define ASCII_IN_TABLE 1
+
+static const uint8_t utf8d[] = {
+
+#if ASCII_IN_TABLE
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+#endif
+
+  070,070,070,070,070,070,070,070,070,070,070,070,070,070,070,070,
+  050,050,050,050,050,050,050,050,050,050,050,050,050,050,050,050,
+  030,030,030,030,030,030,030,030,030,030,030,030,030,030,030,030,
+  030,030,030,030,030,030,030,030,030,030,030,030,030,030,030,030,
+  204,204,188,188,188,188,188,188,188,188,188,188,188,188,188,188,
+  188,188,188,188,188,188,188,188,188,188,188,188,188,188,188,188,
+  174,158,158,158,158,158,158,158,158,158,158,158,158,142,126,126,
+  111, 95, 95, 95, 79,207,207,207,207,207,207,207,207,207,207,207,
+
+  0,1,1,1,8,7,6,4,5,4,3,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+  1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
+  1,2,2,2,1,1,1,1,1,1,1,1,1,1,1,1,1,1,2,2,1,1,1,1,1,1,1,1,1,1,1,1,
+  1,4,4,1,1,1,1,1,1,1,1,1,1,1,1,1,1,4,4,4,1,1,1,1,1,1,1,1,1,1,1,1,
+  1,1,1,4,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,1,8,7,6,4,5,4,3,2,1,1,1,1,
+
+};
+
+
 
 class Glcd{
    public:	
@@ -40,9 +73,16 @@ class Glcd{
         void redraw(int x, int y, int width, int height);
         void fillrect(int x, int y, int width, int height, char c);
         void putchar(int x, int y, const int c);
+        int  drawString(int x, int y, const std::string &str, int cut = 0);
         void drawBitmap(int x, int y, int width, int height, const char *bitmap);
+        void drawBitmap(int x, int y, int width, int height, const std::string &bitmap);
+	int getFontWidth();
+	int getFontHeight();
+	int getWidth();
+	int getHeight();
 
 	virtual ~Glcd();
+
 
    private:
         void cmd(uint8_t c);
@@ -57,14 +97,16 @@ class Glcd{
         int fontWidth;
 	int fontHeight;
 	int fontBPC;
+        int dwidth;
+        int dheight;
 
 
 };
 
-Glcd::Glcd():fb(0),font(0){
+Glcd::Glcd():fb(0),font(0),dwidth(128),dheight(64){
 
 	fb = new uint16_t[1024];
-	setFont(1);        
+	setFont(0);        
 
 }
 
@@ -133,9 +175,70 @@ void Glcd::clear(){
    syncAll();
 }
 
+
+int  Glcd::drawString(int x, int y, const std::string &str, int cut){
+
+	uint8_t data, byte, stat = 9;
+	uint32_t unic = 0;
+        int xpos = x;
+        int cpos = 0;
+	const char *s = str.c_str();        
+
+        for (std::string::const_iterator i = str.begin(); i != str.end(); ++i){
+              
+                byte = *i;
+
+		// Each byte is associated with a character class and a mask;
+		// The character class is used to advance a finite automaton;
+		// The mask is used to strip off leading bits from the byte;
+		// The remaining bits are combined into a Unicode code point;
+		// A code point is complete if the DFA enters the final state.
+
+#if ASCII_IN_TABLE
+		data = utf8d[ byte ];
+		stat = utf8d[ 256 + (stat << 4) + (data >> 4) ];
+		byte = (byte ^ (uint8_t)(data << 4));
+#else
+		if (byte < 0x80) {
+			stat = utf8d[ 128 + (stat << 4) ];
+		} else {
+			data = utf8d[ byte - 0x80 ];
+			stat = utf8d[ 128 + (stat << 4) + (data >> 4) ];
+			byte = (byte ^ (uint8_t)(data << 4));
+		}
+#endif
+
+		unic = (unic << 6) | byte;
+
+		if (!stat) {
+			// unic is now a proper code point, we just print it out.
+			//printf("U+%04X\n", unic);
+			if(xpos < dwidth && cpos >= cut){
+				putchar(xpos,y,unic);
+				xpos += fontWidth;
+			}
+                        ++cpos;   
+			unic = 0;
+		}
+
+		if (stat == 1) {
+			// the byte is not allowed here; the state would have to
+			// be reset to continue meaningful reading of the string
+		}
+
+	}
+return cpos;
+}
+
+
+
 void Glcd::putchar(int x, int y, const int c){
 	
 	drawBitmap(x,y,fontWidth,fontHeight,font + (c-32)*fontBPC);
+}
+
+void Glcd::drawBitmap(int x, int y, int width, int height, const std::string &bitmap){
+     drawBitmap(x,y,width,height,bitmap.data());
 }
 
 
@@ -363,17 +466,24 @@ int main(int argc, char **argv)
 //for(int i = 127; i >= 0 ; i-=5){
 //lcd.fillrect(0,0,128,20,1);
 
-lcd.putchar(0,0,237);
-lcd.setFont(0);
-lcd.putchar(10,0,382);
+//lcd.putchar(0,0,237);
+lcd.setFont(1);
+int i = 0;
+int sz= lcd.drawString(0,0,"Mirko je náš malý macko!!!");
 
+while(1){
+lcd.fillrect(i,0,128,20,0);
+lcd.drawString(0,0,"Mirko je náš malý macko!!!",i%(sz-12));
+ ++i;
+lcd.redraw(0,0,128,20);
+delay(800);
+}
 //lcd.drawBitmap(atoi(argv[1]),0,10,20,font_10_20);
 //lcd.drawBitmap(10,0,10,20,font_10_20);
 //lcd.drawBitmap(20,0,10,20,font_10_20);
 //lcd.drawBitmap(30,0,10,20,font_10_20);
 //printf("i:%d\n",i);
 //lcd.drawBitmap(i,0,20,20,b_bits);
-lcd.redraw(0,0,128,20);
 //lcd.fillrect(i,0,20,20,0);
 //delay(800);
 //lcd.putpixel(1,1,1);
