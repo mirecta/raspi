@@ -30,6 +30,8 @@
 #include "font/font_big.c"
 #include "font/font_small.c"
 
+#define PWM_CHANNEL 0
+
 #define FONT_SMALL 0
 #define FONT_BIG 1
 
@@ -134,13 +136,22 @@ int Glcd::init(){
       if (!bcm2835_init())
 	return 1;
 
+    //spi
     bcm2835_spi_begin();
     bcm2835_spi_setBitOrder(BCM2835_SPI_BIT_ORDER_MSBFIRST);      // The default
     bcm2835_spi_setDataMode(BCM2835_SPI_MODE3);                   // The default
     bcm2835_spi_setClockDivider(BCM2835_SPI_CLOCK_DIVIDER_32); // The default
     bcm2835_spi_chipSelect(BCM2835_SPI_CS0);                      // The default
     bcm2835_spi_setChipSelectPolarity(BCM2835_SPI_CS0, HIGH);      // the default
-    
+
+    //pwm
+    bcm2835_gpio_fsel(RPI_GPIO_P1_18, BCM2835_GPIO_FSEL_ALT5);
+    bcm2835_pwm_set_clock(BCM2835_PWM_CLOCK_DIVIDER_16);
+    bcm2835_pwm_set_mode(PWM_CHANNEL, 1, 1);
+
+    bcm2835_pwm_set_range(PWM_CHANNEL, 8);
+    //bcm2835_pwm_set_data(PWM_CHANNEL, 1023);
+ 
     cmd(0x30);
     cmd(0x30);
     cmd(0x0c);
@@ -470,6 +481,8 @@ int main(int argc, char **argv)
 lcd.setFont(1);
 int i = 0;
 int sz= lcd.drawString(0,0,"Mirko je náš malý macko!!!");
+
+bcm2835_pwm_set_data(PWM_CHANNEL, atoi(argv[1]));
 
 while(1){
 lcd.fillrect(i,0,128,20,0);
