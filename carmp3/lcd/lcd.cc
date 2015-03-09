@@ -78,11 +78,12 @@ class Glcd{
         int  drawString(int x, int y, const std::string &str, int cut = 0);
         void drawBitmap(int x, int y, int width, int height, const char *bitmap);
         void drawBitmap(int x, int y, int width, int height, const std::string &bitmap);
-	int getFontWidth();
+	void setBacklight(int value);
+        int getFontWidth();
 	int getFontHeight();
 	int getWidth();
 	int getHeight();
-
+        
 	virtual ~Glcd();
 
 
@@ -145,11 +146,11 @@ int Glcd::init(){
     bcm2835_spi_setChipSelectPolarity(BCM2835_SPI_CS0, HIGH);      // the default
 
     //pwm
-    bcm2835_gpio_fsel(RPI_GPIO_P1_18, BCM2835_GPIO_FSEL_ALT5);
+    bcm2835_gpio_fsel(RPI_BPLUS_GPIO_J8_12, BCM2835_GPIO_FSEL_ALT5);
     bcm2835_pwm_set_clock(BCM2835_PWM_CLOCK_DIVIDER_16);
     bcm2835_pwm_set_mode(PWM_CHANNEL, 1, 1);
 
-    bcm2835_pwm_set_range(PWM_CHANNEL, 8);
+    bcm2835_pwm_set_range(PWM_CHANNEL, 16);
     //bcm2835_pwm_set_data(PWM_CHANNEL, 1023);
  
     cmd(0x30);
@@ -163,6 +164,10 @@ int Glcd::init(){
     cmd(0x36);    
 
 return 0;
+}
+
+void Glcd::setBacklight(int value){
+	bcm2835_pwm_set_data(PWM_CHANNEL,value);
 }
 
 void Glcd::putpixel(int x, int y, char c){
@@ -482,7 +487,7 @@ lcd.setFont(1);
 int i = 0;
 int sz= lcd.drawString(0,0,"Mirko je náš malý macko!!!");
 
-bcm2835_pwm_set_data(PWM_CHANNEL, atoi(argv[1]));
+lcd.setBacklight(atoi(argv[1]));
 
 while(1){
 lcd.fillrect(i,0,128,20,0);
