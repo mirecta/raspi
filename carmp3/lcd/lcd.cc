@@ -264,7 +264,7 @@ Size TTFont::getTextSize(const std::vector<int> &text){
                 }
                 previous = glyph_index;
             }
-            width += gl->width + gl->left;
+            width += gl->advance_width;
             
             if((gl->top + gl->height) > height)
                 height = gl->top + gl->height;       
