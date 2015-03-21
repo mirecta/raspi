@@ -18,6 +18,7 @@
 
 #include FT_FREETYPE_H
 
+//http://dbader.org/blog/monochrome-font-rendering-with-freetype-and-python
 //http://www.freetype.org/freetype2/docs/tutorial/step2.html#section-4
 // g++ -std=c++11 lcd.cc -o lcd `freetype-config --cflags` -l bcm2835  `freetype-config --libs`
 
@@ -56,7 +57,7 @@ static const uint8_t utf8d[] = {
 
 
 
-static const unsigned char bitReverse256[] = 
+static const char bitReverse256[] = 
 {
     0x00, 0x80, 0x40, 0xC0, 0x20, 0xA0, 0x60, 0xE0, 0x10, 0x90, 0x50, 0xD0, 0x30, 0xB0, 0x70, 0xF0, 
     0x08, 0x88, 0x48, 0xC8, 0x28, 0xA8, 0x68, 0xE8, 0x18, 0x98, 0x58, 0xD8, 0x38, 0xB8, 0x78, 0xF8, 
@@ -76,14 +77,16 @@ static const unsigned char bitReverse256[] =
     0x0F, 0x8F, 0x4F, 0xCF, 0x2F, 0xAF, 0x6F, 0xEF, 0x1F, 0x9F, 0x5F, 0xDF, 0x3F, 0xBF, 0x7F, 0xFF
 };
 
-struct Size {
-     Size()
-         :width(0),height(0){}
+struct TextMetrics {
+     TextMetrics()
+         :width(0),height(0),baseline(0),lost(0){}
  
-     Size(int w, int h):width(w),height(h){}
+     TextMetrics(int w, int h, int bl):width(w),height(h),baseline(bl),lost(0){}
 
      int width;
      int height;
+     int baseline;
+     int lost;
 };
 
 struct Glyph {
@@ -103,25 +106,28 @@ struct Glyph {
     int left;
     int top;
     int advance_width;
-    mutable unsigned char *bitmap; 
+    int ascent;
+    int descent;
+    mutable char *bitmap; 
 };
 
 class TTFont {
+    friend class Glcd;
     public:
         TTFont(const std::string &fontfile, int pixelSize);
         ~TTFont();
 
-        const Glyph* getGlyph(int code);
-        
-        Size getTextSize(const std::vector<int> &text);
-  
+        const Glyph* getGlyph(int code);        
+        TextMetrics getTextSize(const std::vector<int> &text);
+
     private:
         TTFont();
 
-
+    protected:
+        FT_Face face;
+	
     private:
         static FT_Library  library;
-        FT_Face face;
         int pixelSize;
         std::map<int,Glyph> glyphs;
 };
@@ -136,8 +142,9 @@ class Glcd{
         void redraw(int x, int y, int width, int height);
         void fillrect(int x, int y, int width, int height, char c);
         void putchar(int x, int y, const int c);
-        int  drawString(int x, int y, const std::string &str, int cut = 0);
-        
+
+        TextMetrics drawString(int x, int y, const std::string &str, int cut = 0);
+
 	void drawBitmap(int x, int y, int width, int height, int pitch, const char *bitmap, int nomask = 0);
         void drawBitmap(int x, int y, int width, int height, const std::string &bitmap);
         void drawBitmap(int x, int y, int width, int height, int pitch, const std::string &bitmap);
@@ -165,7 +172,53 @@ class Glcd{
 
 };
 
+std::vector<int> decodeUTF8( const std::string &str ){
 
+        std::vector<int> result;
+        result.reserve(str.size());
+
+	uint8_t data, stat = 9;
+	uint32_t unic = 0;
+
+        for (uint8_t byte : str){
+              
+
+		// Each byte is associated with a character class and a mask;
+		// The character class is used to advance a finite automaton;
+		// The mask is used to strip off leading bits from the byte;
+		// The remaining bits are combined into a Unicode code point;
+		// A code point is complete if the DFA enters the final state.
+
+#if ASCII_IN_TABLE
+		data = utf8d[ byte ];
+		stat = utf8d[ 256 + (stat << 4) + (data >> 4) ];
+		byte = (byte ^ (uint8_t)(data << 4));
+#else
+		if (byte < 0x80) {
+			stat = utf8d[ 128 + (stat << 4) ];
+		} else {
+			data = utf8d[ byte - 0x80 ];
+			stat = utf8d[ 128 + (stat << 4) + (data >> 4) ];
+			byte = (byte ^ (uint8_t)(data << 4));
+		}
+#endif
+
+		unic = (unic << 6) | byte;
+
+		if (!stat) {
+			// unic is now a proper code point, we just print it out.
+			result.push_back(unic);
+			unic = 0;
+		}
+
+		if (stat == 1) {
+			// the byte is not allowed here; the state would have to
+			// be reset to continue meaningful reading of the string
+		}
+
+	}
+return result;
+}
 
 
 Glyph::Glyph():bitmap(0){}
@@ -173,7 +226,8 @@ Glyph::Glyph():bitmap(0){}
 Glyph::Glyph(const Glyph &g):
     height(g.height),width(g.width),pitch(g.pitch),
     left(g.left),top(g.top),
-    advance_width(g.advance_width),bitmap(g.bitmap){
+    advance_width(g.advance_width),ascent(g.ascent),
+    descent(g.descent),bitmap(g.bitmap){
         //take ownership
         g.release();
     }
@@ -194,11 +248,13 @@ void Glyph::set(const FT_GlyphSlot slot){
     top = slot->bitmap_top;
     left = slot->bitmap_left;
     advance_width = slot->advance.x >> 6;
+    descent = std::max(0, height - top);
+    ascent = std::max(0, std::max(top, height) - descent);
 
     if (bitmap)
         delete [] bitmap;
 
-    bitmap = new unsigned char [height*abs(pitch)];
+    bitmap = new char [height*abs(pitch)];
 
     //copy reverse
 
@@ -237,11 +293,13 @@ TTFont::~TTFont(){
    if (face)
     FT_Done_Face(face);
 }
+	
 
-Size TTFont::getTextSize(const std::vector<int> &text){
+TextMetrics TTFont::getTextSize(const std::vector<int> &text){
 
         int width = 0;
-        int height = 0;
+        int max_ascent = 0;
+        int max_descent = 0;
 
         FT_UInt  glyph_index, previous = 0;
         FT_Bool  use_kerning;
@@ -265,11 +323,12 @@ Size TTFont::getTextSize(const std::vector<int> &text){
                 previous = glyph_index;
             }
             width += gl->advance_width;
-            
-            if((gl->top + gl->height) > height)
-                height = gl->top + gl->height;       
+           max_ascent = std::max(max_ascent, gl->ascent);
+           max_descent = std::max(max_descent, gl->descent);
+
+		    
         }
-        return Size(width,height);
+        return TextMetrics(width,max_ascent + max_descent,max_descent);
 }
 
 
@@ -367,59 +426,50 @@ void Glcd::clear(){
 }
 
 
-int  Glcd::drawString(int x, int y, const std::string &str, int cut){
-/*
-	uint8_t data, byte, stat = 9;
-	uint32_t unic = 0;
-        int xpos = x;
-        int cpos = 0;
-	const char *s = str.c_str();        
+TextMetrics  Glcd::drawString(int x, int y, const std::string &str, int cut){
+  	
+	if(font == 0 )
+		return TextMetrics();
 
-        for (std::string::const_iterator i = str.begin(); i != str.end(); ++i){
-              
-                byte = *i;
+	std::vector<int> unicode(decodeUTF8(str));
+	TextMetrics metrics = font->getTextSize(unicode);
 
-		// Each byte is associated with a character class and a mask;
-		// The character class is used to advance a finite automaton;
-		// The mask is used to strip off leading bits from the byte;
-		// The remaining bits are combined into a Unicode code point;
-		// A code point is complete if the DFA enters the final state.
+	//clear under text
+	fillrect(x,y,metrics.width,metrics.height,0);
 
-#if ASCII_IN_TABLE
-		data = utf8d[ byte ];
-		stat = utf8d[ 256 + (stat << 4) + (data >> 4) ];
-		byte = (byte ^ (uint8_t)(data << 4));
-#else
-		if (byte < 0x80) {
-			stat = utf8d[ 128 + (stat << 4) ];
-		} else {
-			data = utf8d[ byte - 0x80 ];
-			stat = utf8d[ 128 + (stat << 4) + (data >> 4) ];
-			byte = (byte ^ (uint8_t)(data << 4));
-		}
-#endif
+	FT_UInt  glyph_index, previous = 0;
+	FT_Bool  use_kerning;
 
-		unic = (unic << 6) | byte;
+	use_kerning = FT_HAS_KERNING( font->face );
 
-		if (!stat) {
-			// unic is now a proper code point, we just print it out.
-			//printf("U+%04X\n", unic);
-			if(xpos < dwidth && cpos >= cut){
-				putchar(xpos,y,unic);
-				xpos += fontWidth;
+	for(auto i : unicode){
+
+		const Glyph *gl = font->getGlyph(i);
+
+		if (use_kerning){
+			glyph_index = FT_Get_Char_Index( font->face, i );
+			if (previous && glyph_index)
+			{
+				FT_Vector  delta;
+				FT_Get_Kerning( font->face, previous, glyph_index,
+						FT_KERNING_DEFAULT, &delta );
+
+				x += delta.x >> 6;
 			}
-                        ++cpos;   
-			unic = 0;
+			previous = glyph_index;
 		}
-
-		if (stat == 1) {
-			// the byte is not allowed here; the state would have to
-			// be reset to continue meaningful reading of the string
-		}
+		if((x + gl->left) < dwidth || (y + gl->top) < dheight)
+			drawBitmap(x + gl->left, y + metrics.height - gl->ascent - metrics.baseline, gl->width, gl->height, gl->pitch, gl->bitmap, 1);
+		else
+			metrics.lost ++;
+		
+		x += gl->advance_width;
 
 	}
-return cpos;
-*/
+
+
+
+	return metrics;
 }
 
 
@@ -445,9 +495,9 @@ void Glcd::drawBitmap(int x, int y, int width, int height, int pitch, const char
         int left = x >> 4;
 	int right = ((x + width - 1) >> 4);
         int lbit = (16 - (x%16)) ;
-        int rbit = (x + width - 1)%16;
-        //	      printf("lbit: %d\n",lbit);
-	//        printf("left %d, right %d",left,right);
+        int rbit = (x + width - 1)%16 + 1;
+	//printf("lbit: %d , rbit: %d ",lbit,rbit);
+	//printf("left %d, right %d \n",left,right);
         int smallShift = (width < lbit) ? lbit-width:0; 	
         int smallMask = smallShift ? (1 << (smallShift))-1:0;
         
@@ -461,12 +511,16 @@ void Glcd::drawBitmap(int x, int y, int width, int height, int pitch, const char
 			for (int i = left; i <= right; ++i){
                                 if(i > 7) continue;
 				if(i == left){
-					fb[(j << 4) + i ] |= (fb[(j << 4) + i ] & leftMask)| grabBitmapRow(ix,iy,lbit,width,pitch,bitmap,1) << smallShift;
+					fb[(j << 4) + i ] = (fb[(j << 4) + i ] & leftMask)| grabBitmapRow(ix,iy,lbit,width,pitch,bitmap,1) << smallShift;
                                         ix += lbit;
 				}else if (i == right){
-					fb[(j << 4) + i ] |= (fb[(j << 4) + i ] & rightMask)| grabBitmapRow(ix,iy,rbit,width,pitch,bitmap);
+					fb[(j << 4) + i ] = (fb[(j << 4) + i ] & rightMask)| grabBitmapRow(ix,iy,rbit,width,pitch,bitmap);
 				}else {                       
-					fb[(j << 4) + i ] = grabBitmapRow(ix,iy,16,width,pitch,bitmap);
+					if(nomask)
+						fb[(j << 4) + i ] |= grabBitmapRow(ix,iy,16,width,pitch,bitmap);
+					else
+						fb[(j << 4) + i ] = grabBitmapRow(ix,iy,16,width,pitch,bitmap);
+						
                                         ix += 16;  
 				}                       
 			}
@@ -478,8 +532,12 @@ void Glcd::drawBitmap(int x, int y, int width, int height, int pitch, const char
                                         ix += lbit;
 				}else if (i == right + 8){
 					fb[((j - 32) << 4) + i ] = (fb[((j - 32) << 4) + i ] & rightMask)| grabBitmapRow(ix,iy,rbit,width,pitch,bitmap);
-				}else{                        
-					fb[((j - 32) << 4) + i ] = grabBitmapRow(ix,iy,16,width,pitch,bitmap);
+				}else{  
+					if(nomask)                      
+						fb[((j - 32) << 4) + i ] |= grabBitmapRow(ix,iy,16,width,pitch,bitmap);
+					else
+						fb[((j - 32) << 4) + i ] = grabBitmapRow(ix,iy,16,width,pitch,bitmap);
+		
 					ix += 16;
 				}                         
 
@@ -570,7 +628,7 @@ int16_t Glcd::grabBitmapRow(int x, int y, int count, int width, int pitch, const
            count = width;
 	int index = y * pitch + (x >> 3);
 	int bindex = (x%8);            
-//        printf("width:%d y: %d index:%d,bindex:%d, count:%d \n ",width,y,index,bindex,count);
+       // printf("width:%d y: %d index:%d,bindex:%d, count:%d \n ",width,y,index,bindex,count);
 	for( int i = 0; i < count; ++i){
                 
                 if ( bitmap[index] & (1 << (bindex)))
@@ -586,7 +644,7 @@ int16_t Glcd::grabBitmapRow(int x, int y, int count, int width, int pitch, const
         if (count < 15 && rightAlign)
 	   result = result >> (16 - count);
         
-  //      printf("res:%x\n",result&0xffff);
+        //printf("res:%x\n",result&0xffff);
 	return result ;
 }
 
@@ -670,17 +728,22 @@ int main(int argc, char **argv)
 //lcd.putchar(0,0,237);
 //lcd.setFont(1);
 int i = 0;
-int sz= lcd.drawString(0,0,"Mirko je náš malý macko!!!");
+TTFont font("arial.ttf",atoi(argv[1]));
+lcd.setFont(font);
 
-lcd.setBacklight(atoi(argv[1]));
+TextMetrics m = lcd.drawString(0,0,"Mirko je náš macko");
 
-while(1){
+lcd.setBacklight(20);
+lcd.redraw(0,0,128,m.height);
+
+
+/*while(1){
 lcd.fillrect(i,0,128,20,0);
 lcd.drawString(0,0,"Mirko je náš malý macko!!!",i%(sz-12));
  ++i;
 lcd.redraw(0,0,128,20);
 delay(800);
-}
+}*/
 //lcd.drawBitmap(atoi(argv[1]),0,10,20,font_10_20);
 //lcd.drawBitmap(10,0,10,20,font_10_20);
 //lcd.drawBitmap(20,0,10,20,font_10_20);
