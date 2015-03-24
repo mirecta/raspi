@@ -427,7 +427,8 @@ void Glcd::clear(){
 
 
 TextMetrics  Glcd::drawString(int x, int y, const std::string &str, int cut){
-  	
+ 	int doCut = 0;	
+
 	if(font == 0 )
 		return TextMetrics();
 
@@ -443,7 +444,11 @@ TextMetrics  Glcd::drawString(int x, int y, const std::string &str, int cut){
 	use_kerning = FT_HAS_KERNING( font->face );
 
 	for(auto i : unicode){
-
+		
+		if(doCut < cut){
+			++doCut;
+			continue;
+		}
 		const Glyph *gl = font->getGlyph(i);
 
 		if (use_kerning){
@@ -466,8 +471,6 @@ TextMetrics  Glcd::drawString(int x, int y, const std::string &str, int cut){
 		x += gl->advance_width;
 
 	}
-
-
 
 	return metrics;
 }
@@ -496,7 +499,8 @@ void Glcd::drawBitmap(int x, int y, int width, int height, int pitch, const char
 	int right = ((x + width - 1) >> 4);
         int lbit = (16 - (x%16)) ;
         int rbit = (x + width - 1)%16 + 1;
-	//printf("lbit: %d , rbit: %d ",lbit,rbit);
+	//printf("x:%d, y:%d \n",x,y);
+        //printf("lbit: %d , rbit: %d ",lbit,rbit);
 	//printf("left %d, right %d \n",left,right);
         int smallShift = (width < lbit) ? lbit-width:0; 	
         int smallMask = smallShift ? (1 << (smallShift))-1:0;
@@ -628,7 +632,7 @@ int16_t Glcd::grabBitmapRow(int x, int y, int count, int width, int pitch, const
            count = width;
 	int index = y * pitch + (x >> 3);
 	int bindex = (x%8);            
-       // printf("width:%d y: %d index:%d,bindex:%d, count:%d \n ",width,y,index,bindex,count);
+        //printf("width:%d y: %d index:%d,bindex:%d, count:%d \n ",width,y,index,bindex,count);
 	for( int i = 0; i < count; ++i){
                 
                 if ( bitmap[index] & (1 << (bindex)))
@@ -641,7 +645,7 @@ int16_t Glcd::grabBitmapRow(int x, int y, int count, int width, int pitch, const
 			bindex ++;
 		}
 	}
-        if (count < 15 && rightAlign)
+        if (count < 16 && rightAlign)
 	   result = result >> (16 - count);
         
         //printf("res:%x\n",result&0xffff);
@@ -728,13 +732,30 @@ int main(int argc, char **argv)
 //lcd.putchar(0,0,237);
 //lcd.setFont(1);
 int i = 0;
+std::string text(argv[2]);
+
+
 TTFont font("arial.ttf",atoi(argv[1]));
 lcd.setFont(font);
 
-TextMetrics m = lcd.drawString(0,0,"Mirko je náš macko");
+TextMetrics m = lcd.drawString(0,0,text);
 
 lcd.setBacklight(20);
 lcd.redraw(0,0,128,m.height);
+
+while(1){
+if (m.lost > 0){
+++i;
+}else{
+i = 0;
+}
+m = lcd.drawString(0,0,text,i);
+
+
+delay(800);
+
+
+}
 
 
 /*while(1){
