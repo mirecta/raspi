@@ -23,5 +23,20 @@ BOOST_PYTHON_MODULE(lcd)
             .def_readonly("lost" , &TextMetrics::lost);
 
 
+          class_<TTFont>("TTFont", init<const std::string&, int>());
+
+          class_<Glcd>("Glcd")
+              .def("init", &Glcd::init)
+              .def("setFont", &Glcd::setFont)
+              .def("clear", &Glcd::clear)
+              .def("putpixel", &Glcd::putpixel)
+              .def("redraw", &Glcd::redraw)
+              .def("fillrect", &Glcd::fillrect)
+              .def("drawString", &Glcd::drawString)
+              .def("drawBitmap", static_cast<void (Glcd::*)(int, int, int, int, const std::string&)>(&Glcd::drawBitmap))
+              .def("drawBitmap", static_cast<void (Glcd::*)(int, int, int, int, int, const std::string&)>(&Glcd::drawBitmap))
+              .def("setBacklight", &Glcd::setBacklight)
+              .def("getWidth", &Glcd::getWidth)
+              .def("getHeight", &Glcd::getHeight);
 
 }

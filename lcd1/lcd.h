@@ -75,10 +75,10 @@ class Glcd{
         int init();
         void setFont(TTFont &font);
         void clear();
-        void putpixel(int x, int y, char c);
+        void putpixel(int x, int y, int c);
         void redraw(int x, int y, int width, int height);
-        void fillrect(int x, int y, int width, int height, char c);
-        void putchar(int x, int y, const int c);
+        void fillrect(int x, int y, int width, int height, int c);
+        //void putchar(int x, int y, const int c);
 
         TextMetrics drawString(int x, int y, const std::string &str, int cut = 0);
 

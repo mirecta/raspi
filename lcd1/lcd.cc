@@ -305,7 +305,7 @@ void Glcd::setBacklight(int value){
 	bcm2835_pwm_set_data(PWM_CHANNEL,value);
 }
 
-void Glcd::putpixel(int x, int y, char c){
+void Glcd::putpixel(int x, int y, int c){
 
         if (y > 31){
           y -= 32;
@@ -448,7 +448,7 @@ void Glcd::drawBitmap(int x, int y, int width, int height, int pitch, const char
 }
 
 
-void Glcd::fillrect(int x, int y, int width, int height, char c){
+void Glcd::fillrect(int x, int y, int width, int height, int c){
 
 	int left = x >> 4;
 	int right = ((x + width - 1) >> 4);
@@ -518,6 +518,14 @@ void Glcd::redraw(int x, int y, int width, int height){
 			}
 		}
 	}  
+}
+
+int Glcd::getWidth(){
+    return dwidth;
+}
+
+int Glcd::getHeight(){
+    return dheight;
 }
 
 int16_t Glcd::grabBitmapRow(int x, int y, int count, int width, int pitch, const char *bitmap, int rightAlign){
