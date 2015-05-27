@@ -37,6 +37,10 @@ BOOST_PYTHON_MODULE(lcd)
               .def("drawBitmap", static_cast<void (Glcd::*)(int, int, int, int, int, const std::string&)>(&Glcd::drawBitmap))
               .def("setBacklight", &Glcd::setBacklight)
               .def("getWidth", &Glcd::getWidth)
-              .def("getHeight", &Glcd::getHeight);
+              .def("getHeight", &Glcd::getHeight)
+		      .def("line",&Glcd::line)
+			  .def("lineH",&Glcd::lineH)
+			  .def("lineV",&Glcd::lineV)
+			  .def("drawrect",&Glcd::drawrect);
 
 }

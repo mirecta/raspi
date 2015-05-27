@@ -75,8 +75,15 @@ class Glcd{
         int init();
         void setFont(TTFont &font);
         void clear();
-        void putpixel(int x, int y, int c);
-        void redraw(int x, int y, int width, int height);
+       
+		void putpixel(int x, int y, int c);
+        void line(int x0, int y0, int x1, int y1, int c);
+
+		void lineH(int x, int y, int width, int c);
+		void lineV(int x, int y, int height, int c);
+        void drawrect(int x, int y, int width, int height, int c);
+
+		void redraw(int x, int y, int width, int height);
         void fillrect(int x, int y, int width, int height, int c);
         //void putchar(int x, int y, const int c);
 

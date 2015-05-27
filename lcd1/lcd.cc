@@ -17,7 +17,7 @@
 //http://dbader.org/blog/monochrome-font-rendering-with-freetype-and-python
 //http://www.freetype.org/freetype2/docs/tutorial/step2.html#section-4
 
-
+#define swap(a, b) { int t = a; a = b; b = t; }
 
 #define PWM_CHANNEL 0
 
@@ -320,6 +320,71 @@ void Glcd::putpixel(int x, int y, int c){
 		fb[fbindex] &= ~(1 << (bit));
 
 }
+
+void Glcd::line(int x0, int y0, int x1, int y1, int c){
+
+
+
+	int steep = abs(y1 - y0) > abs(x1 - x0);
+	if (steep) {
+		swap(x0, y0);
+		swap(x1, y1);
+	}
+
+	if (x0 > x1) {
+		swap(x0, x1);
+		swap(y0, y1);
+	}
+
+	int dx, dy;
+	dx = x1 - x0;
+	dy = abs(y1 - y0);
+
+	int err = dx / 2;
+	int ystep;
+
+	if (y0 < y1) {
+		ystep = 1;
+	} else {
+		ystep = -1;
+	}
+
+	for (; x0<=x1; x0++) {
+		if (steep) {
+			putpixel(y0, x0, c);
+		} else {
+			putpixel(x0, y0, c);
+		}
+		err -= dy;
+		if (err < 0) {
+			y0 += ystep;
+			err += dx;
+		}
+	}
+}
+
+void Glcd::lineH(int x, int y, int width, int c){
+
+	fillrect(x,y,width,1,c);
+
+}
+
+void Glcd::lineV(int x, int y, int height, int c){
+
+	fillrect(x,y,1,height,c);
+}
+
+
+void Glcd::drawrect(int x, int y, int width, int height, int c){
+
+	lineH(x, y, width, c);
+	lineH(x, y+height-1, width, c);
+	lineV(x, y, height, c);
+	lineV(x+width-1, y, height, c);
+
+}
+
+
 
 void Glcd::clear(){
    memset(fb,0,1024*sizeof(uint16_t));
