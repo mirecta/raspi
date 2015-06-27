@@ -523,7 +523,7 @@ void Glcd::fillrect(int x, int y, int width, int height, int c){
         uint16_t rvalue = 0x00;
 
 	if (left == right){
-         if (c)
+    //     if (c)
          lvalue = rvalue = (0xffff >> (x%16)) & 0xffff << (15 - ((x + width-1)%16) );
 	}else{
          lvalue = 0xffff >> (x%16);
