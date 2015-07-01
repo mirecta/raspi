@@ -31,7 +31,7 @@ BOOST_PYTHON_MODULE(lcd)
               .def("clear", &Glcd::clear)
               .def("putpixel", &Glcd::putpixel)
               .def("redraw", &Glcd::redraw)
-              .def("fillrect", &Glcd::fillrect)
+              .def("fillRect", &Glcd::fillRect)
               .def("drawString", &Glcd::drawString)
               .def("drawBitmap", static_cast<void (Glcd::*)(int, int, int, int, const std::string&)>(&Glcd::drawBitmap))
               .def("drawBitmap", static_cast<void (Glcd::*)(int, int, int, int, int, const std::string&)>(&Glcd::drawBitmap))
@@ -41,6 +41,6 @@ BOOST_PYTHON_MODULE(lcd)
 		      .def("line",&Glcd::line)
 			  .def("lineH",&Glcd::lineH)
 			  .def("lineV",&Glcd::lineV)
-			  .def("drawrect",&Glcd::drawrect);
+			  .def("drawRect",&Glcd::drawRect);
 
 }

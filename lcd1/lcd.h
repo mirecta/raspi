@@ -81,10 +81,10 @@ class Glcd{
 
 		void lineH(int x, int y, int width, int c);
 		void lineV(int x, int y, int height, int c);
-        void drawrect(int x, int y, int width, int height, int c);
+        void drawRect(int x, int y, int width, int height, int c);
 
 		void redraw(int x, int y, int width, int height);
-        void fillrect(int x, int y, int width, int height, int c);
+        void fillRect(int x, int y, int width, int height, int c);
         //void putchar(int x, int y, const int c);
 
         TextMetrics drawString(int x, int y, const std::string &str, int cut = 0);

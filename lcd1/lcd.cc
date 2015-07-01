@@ -365,17 +365,17 @@ void Glcd::line(int x0, int y0, int x1, int y1, int c){
 
 void Glcd::lineH(int x, int y, int width, int c){
 
-	fillrect(x,y,width,1,c);
+	fillRect(x,y,width,1,c);
 
 }
 
 void Glcd::lineV(int x, int y, int height, int c){
 
-	fillrect(x,y,1,height,c);
+	fillRect(x,y,1,height,c);
 }
 
 
-void Glcd::drawrect(int x, int y, int width, int height, int c){
+void Glcd::drawRect(int x, int y, int width, int height, int c){
 
 	lineH(x, y, width, c);
 	lineH(x, y+height-1, width, c);
@@ -401,7 +401,7 @@ TextMetrics  Glcd::drawString(int x, int y, const std::string &str, int cut){
 	std::vector<int> unicode(decodeUTF8(str));
 	TextMetrics metrics = font->getTextSize(unicode);
 	//clear under text
-	fillrect(x,y,metrics.width,metrics.height,0);
+	fillRect(x,y,metrics.width,metrics.height,0);
 
 	FT_UInt  glyph_index, previous = 0;
 	FT_Bool  use_kerning;
@@ -513,7 +513,7 @@ void Glcd::drawBitmap(int x, int y, int width, int height, int pitch, const char
 }
 
 
-void Glcd::fillrect(int x, int y, int width, int height, int c){
+void Glcd::fillRect(int x, int y, int width, int height, int c){
 
 	int left = x >> 4;
 	int right = ((x + width - 1) >> 4);
