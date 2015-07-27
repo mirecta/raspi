@@ -16,14 +16,15 @@
 
 struct TextMetrics {
      TextMetrics()
-         :width(0),height(0),baseline(0),lost(0){}
+         :width(0),height(0),baseline(0),lost(0),count(0){}
  
-     TextMetrics(int w, int h, int bl):width(w),height(h),baseline(bl),lost(0){}
+     TextMetrics(int w, int h, int bl):width(w),height(h),baseline(bl),lost(0),count(0){}
 
      int width;
      int height;
      int baseline;
      int lost;
+     int count;
 };
 
 struct Glyph {

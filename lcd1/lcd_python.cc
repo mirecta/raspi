@@ -20,7 +20,8 @@ BOOST_PYTHON_MODULE(lcd)
             .def_readonly("width", &TextMetrics::width)
             .def_readonly("height", &TextMetrics::height)
             .def_readonly("baseline", &TextMetrics::baseline)
-            .def_readonly("lost" , &TextMetrics::lost);
+            .def_readonly("lost" , &TextMetrics::lost)
+            .def_readonly("count" , &TextMetrics::count);
 
 
           class_<TTFont>("TTFont", init<const std::string&, int>());

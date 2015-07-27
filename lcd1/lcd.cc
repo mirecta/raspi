@@ -415,7 +415,9 @@ TextMetrics  Glcd::drawString(int x, int y, const std::string &str, int cut){
 
 	std::vector<int> unicode(decodeUTF8(str));
 	TextMetrics metrics = font->getTextSize(unicode);
-	//clear under text
+        metrics.count = unicode.size();	
+
+        //clear under text
 	fillRect(x,y,metrics.width,metrics.height,0);
 
 	FT_UInt  glyph_index, previous = 0;
