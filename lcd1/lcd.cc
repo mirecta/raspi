@@ -306,10 +306,13 @@ void Glcd::setBacklight(int value){
 }
 
 void Glcd::putpixel(int x, int y, int c){
-
+       
+        if(x >= dwidth || y >= dheight) 
+	   return;    
+   
         if (y > 31){
           y -= 32;
-          x+= 128;
+          x += 128;
 	}
 
 	int fbindex = (y << 4) + (x >> 4);
@@ -364,13 +367,25 @@ void Glcd::line(int x0, int y0, int x1, int y1, int c){
 }
 
 void Glcd::lineH(int x, int y, int width, int c){
+       
+        if(x >= dwidth || y >= dheight)
+	  return;
 
+        if((x + width) > dwidth)
+            width = dwidth - x;
+ 
 	fillRect(x,y,width,1,c);
 
 }
 
 void Glcd::lineV(int x, int y, int height, int c){
 
+        if(x >= dwidth || y >= dheight)
+	  return;
+
+        if((y + height) > dheight)
+            height = dheight - y;
+	
 	fillRect(x,y,1,height,c);
 }
 
@@ -430,6 +445,7 @@ TextMetrics  Glcd::drawString(int x, int y, const std::string &str, int cut){
 		}
 		if((x + gl->left) < dwidth && (y + gl->top) < dheight){
 			drawBitmap(x + gl->left, y + metrics.height - gl->ascent - metrics.baseline, gl->width, gl->height, gl->pitch, gl->bitmap, 1);
+                        //printf("glyph Y %d\n",y + metrics.height - gl->ascent - metrics.baseline);
 		}else if ((x + gl->left) > dwidth){
 			metrics.lost++;
                 }
@@ -473,6 +489,7 @@ void Glcd::drawBitmap(int x, int y, int width, int height, int pitch, const char
 	for (int j = y; j < y + height; ++j,++iy){
                 ix = 0;
                 if (j > 63) continue;
+                //printf("index %d, left %d \n",(j << 4),left );
 		if ( j < 32){
 			for (int i = left; i <= right; ++i){
                                 if(i > 7) continue;
@@ -515,7 +532,17 @@ void Glcd::drawBitmap(int x, int y, int width, int height, int pitch, const char
 
 void Glcd::fillRect(int x, int y, int width, int height, int c){
 
-	int left = x >> 4;
+        if(x >= dwidth || y >= dheight)
+	  return;
+        
+        if((x + width) > dwidth)
+            width = dwidth - x;
+        
+        if((y + height) > dheight)
+            height = dheight - y;
+	
+
+        int left = x >> 4;
 	int right = ((x + width - 1) >> 4);
 
 	uint16_t value = c ? 0xffff:0x0000;
@@ -561,7 +588,17 @@ void Glcd::fillRect(int x, int y, int width, int height, int c){
 
 
 void Glcd::redraw(int x, int y, int width, int height){
-	int left = x >> 4;
+        
+        if(x >= dwidth || y >= dheight)
+	  return;
+        
+        if((x + width) > dwidth)
+            width = dwidth - x;
+        
+        if((y + height) > dheight)
+            height = dheight - y;
+	
+        int left = x >> 4;
 	int right = ((x + width - 1) >> 4);
 
 //        printf("left %d, right %d",left,right);
