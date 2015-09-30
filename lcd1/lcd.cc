@@ -691,6 +691,7 @@ void Glcd::cmd(uint8_t c){
   char buffer[] = {0xf8,0x00,0x00};
   buffer[1] = c & 0xf0;
   buffer[2] = c << 4;
+  bcm2835_spi_chipSelect(BCM2835_SPI_CS0);
   bcm2835_spi_writenb(buffer,3);
   usleep(2);
 }
@@ -700,6 +701,7 @@ void Glcd::data(uint8_t d){
   char buffer[] = {0xfa,0x00,0x00};
   buffer[1] = d & 0xf0;
   buffer[2] = d << 4;
+  bcm2835_spi_chipSelect(BCM2835_SPI_CS0);
   bcm2835_spi_writenb(buffer,3);
   usleep(2);
 }
