@@ -27,12 +27,16 @@ btn = ((lcd.LEFT  , 'Red Red Wine'              , lcd.RED),
        (lcd.RIGHT , 'Purple mountain\nmajesties', lcd.VIOLET),
        (lcd.SELECT, ''                          , lcd.ON))
 prev = -1
-while True:
+try:
+  while True:
     for b in btn:
-        if lcd.buttonPressed(b[0]):
-            if b is not prev:
-                lcd.clear()
-                lcd.message(b[1])
-                lcd.setLed(b[2])
-                prev = b
-            break
+      if lcd.buttonPressed(b[0]):
+        if b is not prev:
+          lcd.clear()
+          lcd.message(b[1])
+          lcd.setLed(b[2])
+          prev = b
+          break
+
+except:
+  lcd.setLed(lcd.OFF);
