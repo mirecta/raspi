@@ -117,18 +117,19 @@ static PyObject *rotary(PyObject *self, PyObject *args)
   PyObject *temp = NULL;
 
   if (PyArg_ParseTuple(args, "iii|O:callback", &Button,&EncoderA,&EncoderB,&temp)) {
-    if (temp){
-        if (!PyCallable_Check(temp)) {
-            PyErr_SetString(PyExc_TypeError, "parameter must be callable");
-            return NULL;
-        }
-        Py_XINCREF(temp);         /* Add a reference to new callback */
-        Py_XDECREF(my_callback);  /* Dispose of previous callback */
-        my_callback = temp;       /* Remember new callback */
-      }else{
-        return NULL;
-      }
-    }
+      if (temp){
+          if (!PyCallable_Check(temp)) {
+              PyErr_SetString(PyExc_TypeError, "parameter must be callable");
+              return NULL;
+          }
+          Py_XINCREF(temp);         /* Add a reference to new callback */
+          Py_XDECREF(my_callback);  /* Dispose of previous callback */
+          my_callback = temp;       /* Remember new callback */
+      }      
+  }else{
+      return NULL;
+  }
+    
 
   wiringPiSetup () ;
   pinMode (Button, INPUT);          // PIN als Ausgang konfigurieren
