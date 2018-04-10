@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <wiringPi.h>
 #include <Python.h>
+#include <pthread.h>
  
 //#define Button 6        // Pin 22 Orange Pi Zero
 //#define EncoderA 10 // Pin 24 Orange Pi Zero
@@ -8,6 +9,7 @@
  
 volatile int value = 0;
 volatile int button = 0;
+pthread_mutex_t lock;
 
 int right=0;
 int left=0;
@@ -31,8 +33,12 @@ void ButtonInterrupt (void)
 {
     if(my_callback) 
         PyCallback(0);
+    
+    pthread_mutex_lock(&lock);
     button = 1;
-    delay (500) ;
+    pthread_mutex_unlock(&lock);
+
+    delay(500);
 }
  
 void EncoderAInterrupt (void) 
@@ -42,33 +48,44 @@ void EncoderAInterrupt (void)
     {
      if(my_callback)
         PyCallback(-1);
+    
+     pthread_mutex_lock(&lock);
      value --;
+     pthread_mutex_unlock(&lock);
+      
     }
  left=0;                       // Zustand vom Ersten Impuls loeschen 
 }
  
 void EncoderBInterrupt (void) 
 { 
-left= digitalRead(EncoderA);   //  B=0 und A=1 Erste Impuls bei Linkslauf
-if(!left && right)        //  B=0 und A=0 Zweite Impuls bei Rechtslauf
-    {
-    if(my_callback)
-       PyCallback(1);
-    value ++;
-    }
- right=0;                  // Zustand vom Ersten Impuls loeschen
+    left= digitalRead(EncoderA);   //  B=0 und A=1 Erste Impuls bei Linkslauf
+    if(!left && right)        //  B=0 und A=0 Zweite Impuls bei Rechtslauf
+        {
+        if(my_callback)
+           PyCallback(1);
+        pthread_mutex_lock(&lock);
+        value ++;
+        pthread_mutex_unlock(&lock);
+        }
+    right=0;                  // Zustand vom Ersten Impuls loeschen
 }
 
 static PyObject* getValue(PyObject *self, PyObject *args)
 {
-    return PyLong_FromLong(value);
+    pthread_mutex_lock(&lock);
+    PyObject *res = PyLong_FromLong(value);
+    pthread_mutex_unlock(&lock);
+    return res;
 }
 
 static PyObject* setValue(PyObject *self, PyObject *args)
 {
     int tmp;
     if (PyArg_ParseTuple(args, "i" , &tmp)){
-            value = tmp;    
+            pthread_mutex_lock(&lock);
+            value = tmp;  
+            pthread_mutex_unlock(&lock);  
     }else{
         return NULL;
     }
@@ -78,12 +95,17 @@ static PyObject* setValue(PyObject *self, PyObject *args)
  
 static PyObject* getButton(PyObject *self, PyObject *args)
 {
-    return PyLong_FromLong(button);
+    pthread_mutex_lock(&lock);
+    PyObject *ret = PyLong_FromLong(button);
+    pthread_mutex_unlock(&lock);
+    return ret;
 }
 
 static PyObject* clearButton(PyObject *self, PyObject *args)
 {
+    pthread_mutex_lock(&lock);
     button = 0;
+    pthread_mutex_unlock(&lock);
     Py_INCREF(Py_None);
     return Py_None;
 }
@@ -144,4 +166,8 @@ initrotary(void)
 {
     (void) Py_InitModule("rotary", RotaryMethods);
     PyEval_InitThreads();
+    if (pthread_mutex_init(&lock, NULL) != 0)
+    {
+        printf("\n mutex init failed\n");
+    }
 }
