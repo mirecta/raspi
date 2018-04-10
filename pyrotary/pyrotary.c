@@ -6,6 +6,8 @@
 //#define EncoderA 10 // Pin 24 Orange Pi Zero
 //#define EncoderB 11 // Pin 26 Orange Pi Zero
  
+volatile int value = 0;
+volatile int button = 0;
 
 int right=0;
 int left=0;
@@ -26,8 +28,10 @@ void PyCallback(int c){
 }
  
 void ButtonInterrupt (void) 
-{ 
-    PyCallback(0);
+{
+    if(my_callback) 
+        PyCallback(0);
+    button = 1;
     delay (500) ;
 }
  
@@ -36,7 +40,9 @@ void EncoderAInterrupt (void)
  right=digitalRead(EncoderB);  //  A=0 und B=1 Erste Impuls bei Rechtslauf
  if(!right && left)       //  A=0 und B=0 Zweite Impuls bei Linkslauf
     {
-     PyCallback(-1);
+     if(my_callback)
+        PyCallback(-1);
+     value --;
     }
  left=0;                       // Zustand vom Ersten Impuls loeschen 
 }
@@ -46,29 +52,61 @@ void EncoderBInterrupt (void)
 left= digitalRead(EncoderA);   //  B=0 und A=1 Erste Impuls bei Linkslauf
 if(!left && right)        //  B=0 und A=0 Zweite Impuls bei Rechtslauf
     {
-     PyCallback(1);
+    if(my_callback)
+       PyCallback(1);
+    value ++;
     }
  right=0;                  // Zustand vom Ersten Impuls loeschen
 }
 
+static PyObject* getValue(PyObject *self, PyObject *args)
+{
+    return PyLong_FromLong(value);
+}
+
+static PyObject* setValue(PyObject *self, PyObject *args)
+{
+    int tmp;
+    if (PyArg_ParseTuple(args, "i" , &tmp)){
+            value = tmp;    
+    }else{
+        return NULL;
+    }
+    Py_INCREF(Py_None);
+  return Py_None;
+}
  
-static PyObject *rotary (PyObject *self, PyObject *args)
+static PyObject* getButton(PyObject *self, PyObject *args)
+{
+    return PyLong_FromLong(button);
+}
+
+static PyObject* clearButton(PyObject *self, PyObject *args)
+{
+    button = 0;
+    Py_INCREF(Py_None);
+    return Py_None;
+}
+
+static PyObject *rotary(PyObject *self, PyObject *args)
 {
  //parse args  
   int Button;
-  PyObject *temp;
+  PyObject *temp = NULL;
 
-  if (PyArg_ParseTuple(args, "iiiO:callback", &Button,&EncoderA,&EncoderB,&temp)) {
-    if (!PyCallable_Check(temp)) {
-        PyErr_SetString(PyExc_TypeError, "parameter must be callable");
+  if (PyArg_ParseTuple(args, "iii|O:callback", &Button,&EncoderA,&EncoderB,&temp)) {
+    if (temp){
+        if (!PyCallable_Check(temp)) {
+            PyErr_SetString(PyExc_TypeError, "parameter must be callable");
+            return NULL;
+        }
+        Py_XINCREF(temp);         /* Add a reference to new callback */
+        Py_XDECREF(my_callback);  /* Dispose of previous callback */
+        my_callback = temp;       /* Remember new callback */
+      }else{
         return NULL;
+      }
     }
-    Py_XINCREF(temp);         /* Add a reference to new callback */
-    Py_XDECREF(my_callback);  /* Dispose of previous callback */
-    my_callback = temp;       /* Remember new callback */
-  }else{
-    return NULL;
-  }
 
   wiringPiSetup () ;
   pinMode (Button, INPUT);          // PIN als Ausgang konfigurieren
@@ -89,6 +127,15 @@ static PyObject *rotary (PyObject *self, PyObject *args)
 static PyMethodDef RotaryMethods[] = {
     {"RotaryEncoder",  rotary, METH_VARARGS,
      "Init Rotary enc"},
+    {"getValue",  getValue, METH_VARARGS,
+     "Get value of rotary encoder"},
+    {"setValue",  setValue, METH_VARARGS,
+     "Set value of rotary encoder"},
+    {"getButton",  getButton, METH_VARARGS,
+     "Get value of rotary encoder"},
+    {"clearButton",  clearButton, METH_VARARGS,
+     "Set value of rotary encoder"},
+    
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
