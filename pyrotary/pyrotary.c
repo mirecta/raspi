@@ -95,8 +95,21 @@ static PyObject* setValue(PyObject *self, PyObject *args)
  
 static PyObject* getButton(PyObject *self, PyObject *args)
 {
+    PyObject *tmp = NULL;
+    int erase = 0;
+    if (PyArg_ParseTuple(args, "|O" , &tmp)){
+        if (tmp){
+            if(PyObject_IsTrue(tmp) == 1){
+                erase = 1;
+            }
+        }
+    }else{
+        return NULL;
+    }
     pthread_mutex_lock(&lock);
     PyObject *ret = PyLong_FromLong(button);
+    if (erase)
+        button = 0;
     pthread_mutex_unlock(&lock);
     return ret;
 }

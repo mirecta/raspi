@@ -13,7 +13,10 @@ def main():
     old = 0    
     
     while True:
+        butt = rotary.getButton(True)
+        if butt: rotary.setValue(0)
         val = int(rotary.getValue()/2.)
+        
         if old != val:
             old = val
             lcd.set_cursor(row=0)
